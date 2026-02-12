@@ -1,0 +1,64 @@
+# SCENARIO 2: CrashLoopBackOff — probes on wrong port + no HTTP server
+# SCENARIO (Bonus): Secret key mismatch — DATABASE_USERNAME vs DB_USERNAME
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc.fullname" . }}-backend
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+        {{- include "hfc.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "hfc.serviceAccountName" . }}
+      containers:
+        - name: backend-api
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["node", "-e", "console.log('Backend starting...'); setTimeout(() => {}, 300000)"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: APP_ENV
+            - name: REDIS_URL
+              value: "redis://{{ include "hfc.fullname" . }}-redis:6379"
+            # BUG: Secret key is DB_USERNAME, not DATABASE_USERNAME → CreateContainerConfigError
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hfc.fullname" . }}-db-credentials
+                  key: DATABASE_USERNAME
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hfc.fullname" . }}-db-credentials
+                  key: DB_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.livenessProbe.httpGet.path }}
+              port: {{ .Values.backend.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.backend.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.backend.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.readinessProbe.httpGet.path }}
+              port: {{ .Values.backend.readinessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.backend.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}

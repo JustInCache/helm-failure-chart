@@ -1,0 +1,146 @@
+# ============================================================
+# Helm Failure Chart - Configuration Values
+# 10+ embedded Kubernetes failure scenarios for AI agent demos
+# ============================================================
+
+# ------------------------------------------------------------
+# Frontend (Nginx-based UI)
+# SCENARIO: ImagePullBackOff
+# ------------------------------------------------------------
+frontend:
+  replicaCount: 2
+  image:
+    repository: nginx
+    # BUG: This tag does not exist → ImagePullBackOff
+    tag: "v99.99.99"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# ------------------------------------------------------------
+# Backend API (Node.js)
+# SCENARIO: CrashLoopBackOff + Secret key mismatch
+# ------------------------------------------------------------
+backend:
+  replicaCount: 2
+  image:
+    repository: node
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  # BUG: Probe configured on wrong port (8080 instead of 3000)
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ------------------------------------------------------------
+# Background Worker (Python)
+# SCENARIO: CreateContainerConfigError
+# ------------------------------------------------------------
+worker:
+  replicaCount: 1
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 150m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# ------------------------------------------------------------
+# Redis Cache
+# SCENARIO: OOMKilled
+# ------------------------------------------------------------
+redis:
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 6379
+  resources:
+    requests:
+      cpu: 100m
+      # BUG: 5Mi is way too low for Redis → OOMKilled
+      memory: 5Mi
+    limits:
+      cpu: 200m
+      # BUG: 5Mi is way too low for Redis → OOMKilled
+      memory: 5Mi
+
+# ------------------------------------------------------------
+# Ingress Configuration
+# SCENARIO: Wrong service name + wrong port
+# ------------------------------------------------------------
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  host: app.example.io
+
+# ------------------------------------------------------------
+# Autoscaling
+# SCENARIO: HPA targets wrong deployment name
+# ------------------------------------------------------------
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+
+# ------------------------------------------------------------
+# Persistence (for worker job queue)
+# SCENARIO: Non-existent StorageClass → PVC Pending
+# ------------------------------------------------------------
+persistence:
+  enabled: true
+  # BUG: StorageClass does not exist on cluster
+  storageClassName: gp3-encrypted-premium
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+
+# ------------------------------------------------------------
+# Database connection
+# ------------------------------------------------------------
+database:
+  host: postgres-primary.database.svc.cluster.local
+  port: "5432"
+  name: app_orders
+  username: order_svc
+  password: c3VwZXItc2VjcmV0LXBhc3N3b3Jk

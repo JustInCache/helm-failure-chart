@@ -1,0 +1,25 @@
+# SCENARIO 7: HPA targets wrong deployment name
+# Actual deployment is "xxx-backend" but HPA targets "xxx-backend-api"
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "hfc.fullname" . }}-backend-hpa
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    # BUG: should be "xxx-backend" not "xxx-backend-api"
+    name: {{ include "hfc.fullname" . }}-backend-api
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

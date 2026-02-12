@@ -1,0 +1,36 @@
+# SCENARIO 6: Ingress misconfiguration
+# Wrong service name (xxx-web vs xxx-frontend) and wrong backend port (8080 vs 3000)
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "hfc.fullname" . }}-ingress
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+  annotations:
+    {{- range $key, $value := .Values.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # BUG: actual service is "xxx-frontend" not "xxx-web"
+                name: {{ include "hfc.fullname" . }}-web
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "hfc.fullname" . }}-backend
+                port:
+                  # BUG: backend service port is 3000, not 8080
+                  number: 8080
+{{- end }}

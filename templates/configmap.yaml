@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hfc.fullname" . }}-config
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "info"
+  REDIS_HOST: "{{ include "hfc.fullname" . }}-redis"
+  REDIS_PORT: "6379"
+  # BUG: Key is DB_HOST but worker references DATABASE_HOST
+  DB_HOST: {{ .Values.database.host }}
+  # BUG: Key is DB_PORT but worker references DATABASE_PORT
+  DB_PORT: {{ .Values.database.port | quote }}
+  DB_NAME: {{ .Values.database.name }}
+  WORKER_CONCURRENCY: "5"
+  ORDER_QUEUE: "orders:pending"

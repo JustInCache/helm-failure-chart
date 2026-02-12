@@ -1,0 +1,43 @@
+# SCENARIO 1: ImagePullBackOff
+# Image tag does not exist → pod stuck in ImagePullBackOff / ErrImagePull
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc.fullname" . }}-frontend
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+    app: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        {{- include "hfc.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "hfc.serviceAccountName" . }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}

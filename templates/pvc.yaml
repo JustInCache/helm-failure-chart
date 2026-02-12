@@ -1,0 +1,19 @@
+# SCENARIO 8: PVC stuck in Pending — non-existent StorageClass
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "hfc.fullname" . }}-worker-pvc
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+    app: worker
+spec:
+  storageClassName: {{ .Values.persistence.storageClassName }}
+  accessModes:
+    {{- range .Values.persistence.accessModes }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}

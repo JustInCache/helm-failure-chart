@@ -1,0 +1,64 @@
+# SCENARIO 4: CreateContainerConfigError
+# References ConfigMap keys DATABASE_HOST / DATABASE_PORT
+# but ConfigMap defines DB_HOST / DB_PORT
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc.fullname" . }}-worker
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+    app: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        {{- include "hfc.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "hfc.serviceAccountName" . }}
+      containers:
+        - name: order-worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          command: ["python", "-c", "import os; print('Worker ready'); print(os.environ)"]
+          env:
+            # BUG: ConfigMap key is "DB_HOST" not "DATABASE_HOST"
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: DATABASE_HOST
+            # BUG: ConfigMap key is "DB_PORT" not "DATABASE_PORT"
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: DATABASE_PORT
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: REDIS_HOST
+            - name: WORKER_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: WORKER_CONCURRENCY
+            - name: ORDER_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc.fullname" . }}-config
+                  key: ORDER_QUEUE
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - name: job-data
+              mountPath: /data/jobs
+      volumes:
+        - name: job-data
+          persistentVolumeClaim:
+            claimName: {{ include "hfc.fullname" . }}-worker-pvc

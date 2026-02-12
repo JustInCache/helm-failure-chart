@@ -1,0 +1,32 @@
+# SCENARIO 10: NetworkPolicy blocks database egress
+# Backend can reach Redis but NOT the PostgreSQL database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "hfc.fullname" . }}-backend-netpol
+  labels:
+    {{- include "hfc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # BUG: Missing egress rule for PostgreSQL database on port 5432
