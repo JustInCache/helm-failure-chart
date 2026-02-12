@@ -68,6 +68,22 @@ kubectl get pods -n failure-demo -w
 
 ---
 
+## 🔥 Want Most Common Scenarios ONLY?
+
+If you want the lite chart covers the **5 most common** Kubernetes failures. You can switch to below: 
+
+👉 **[helm-failure-chart-lite](https://github.com/JustInCache/helm-failure-chart-lite)** — the lite version
+
+| | Lite | Full (this repo) |
+|---|---|---|
+| Scenarios | 5 | 10+ |
+| Components | 3 (Frontend, Backend, Worker) | 4 (+ Redis) |
+| Ingress / HPA / PVC / NetworkPolicy | ❌ | ✅ |
+| Resource footprint | ~200m CPU, ~256Mi | ~850m CPU, ~900Mi |
+| Best for | Quick demos, interviews | Comprehensive training, deep dives |
+
+---
+
 ## 💣 Failure Scenarios
 
 ### 1️⃣ ImagePullBackOff
